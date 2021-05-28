@@ -1,4 +1,5 @@
 open Core
+module Time = Time_unix
 
 module Node = struct
   module Public = struct
@@ -17,7 +18,7 @@ module Changeset_info = struct
       { node        : Node.t
       ; parents     : [ `Zero | `One of Node.t | `Two of Node.t * Node.t ]
       ; author      : string
-      ; date        : Time.t
+      ; time        : Time.t
       ; tags        : string list
       ; description : string
       }
@@ -40,7 +41,7 @@ module Changeset_info = struct
       ; List.map t.tags ~f:(fun tag -> line "tag" tag)
       ; List.map parents ~f:(fun parent -> line "parent" (node parent))
       ; [ line "user" t.author
-        ; line "date" (Time.to_string t.date)
+        ; line "date" (Time.to_string t.time)
         ; line "summary" t.description
         ]
       ]
@@ -55,7 +56,7 @@ module Changeset_info = struct
     [ "{node} {rev}"
     ; "{p1.node} {p1.rev}"
     ; "{p2.node} {p2.rev}"
-    ; "{author|user}"
+    ; "{author|emailuser}"
     ; "{date|hgdate}"
     ; "{tags}"
     ; "{desc|tabindent}"
@@ -64,7 +65,7 @@ module Changeset_info = struct
     |> String.concat ~sep:"\\n"
   ;;
 
-  let time_of_hgdate hgdate =
+  let time_of_hgtime hgdate =
     (* The format is '<unix timestamp of commit> <timezone offset of commit in
        seconds>'. We only need the second part if we want to know the where the commit
        happened. *)
@@ -76,12 +77,12 @@ module Changeset_info = struct
 
   let%test_unit _ =
     [%test_result: Time.t]
-      (time_of_hgdate "1429736177 14400")
+      (time_of_hgtime "1429736177 14400")
       ~expect:(Time.of_string "2015-04-22 16:56:17-04:00")
 
   let%test_unit _ =
     [%test_result: Time.t]
-      (time_of_hgdate "1429715393 -3600")
+      (time_of_hgtime "1429715393 -3600")
       ~expect:(Time.of_string "2015-04-22 16:09:53+01:00")
 
   let of_templated_stdout stdout =
@@ -100,7 +101,7 @@ module Changeset_info = struct
     let rec aux acc lines =
       match lines with
       | [] -> List.rev acc
-      | node :: p1 :: p2 :: author :: date :: tags :: first_desc :: tl ->
+      | node :: p1 :: p2 :: author :: time :: tags :: first_desc :: tl ->
         let end_desc, remainder =
           List.split_while tl ~f:(fun line ->
             (* tabindent does *not* change blank lines to "\t", which is a little
@@ -129,7 +130,7 @@ module Changeset_info = struct
           { node
           ; parents
           ; author
-          ; date = time_of_hgdate date
+          ; time = time_of_hgtime time
           ; tags =
               String.split ~on:' ' tags
               |> List.filter ~f:(fun s -> not (String.is_empty s))
@@ -176,7 +177,7 @@ module Changeset_info = struct
               ; local_revision = 3
               } )
       ; author = "username"
-      ; date = Time.of_string "2021-01-03 03:33:52-05:00"
+      ; time = Time.of_string "2021-01-03 03:33:52-05:00"
       ; tags = [ "first-tag"; "second-tag"; "third-tag" ]
       ; description = "rebase to [123454321098] with ancestor [fedcba987654]"
       }
@@ -192,7 +193,7 @@ module Changeset_info = struct
             ; local_revision = 1
             }
       ; author = "username"
-      ; date = Time.of_string "2021-01-01 09:27:50-05:00"
+      ; time = Time.of_string "2021-01-01 09:27:50-05:00"
       ; tags = []
       ; description = "some commit description"
       }
@@ -242,7 +243,7 @@ module Changeset_info = struct
             }
         ; parents = `Zero
         ; author = ""
-        ; date = Time.epoch
+        ; time = Time.epoch
         ; tags = []
         ; description = ""
         }
@@ -471,9 +472,7 @@ module Command_helpers = struct
     | Error _ -> non_0_exit_error o
 
   let expect_0_stdout_list (o : Async.Process.Output.t) =
-    Or_error.map (expect_0_stdout o) ~f:(fun stdout ->
-      String.split ~on:'\n' stdout
-      |> List.filter ~f:(fun line -> not (String.is_empty line)))
+    Or_error.map (expect_0_stdout o) ~f:String.split_lines
 end
 
 module Public = struct

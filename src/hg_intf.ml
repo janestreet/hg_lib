@@ -237,19 +237,6 @@ module type S = sig
        -> string list output
       ) with_args
 
-  (* Important note! If you are accustomed to the Jane Street standard behavior of having
-     merges automatically committed, be aware that this is a property that comes from your
-     ~/.hgrc and not something intrinsic to how `hg merge` works. Often in an automated
-     environment the hgrc will be set differently and merging will not cause a commit. You
-     are encouraged to use something like the [Fixed_hg_environment] module to make
-     behavior more predictable.
-
-     [tool] defaults to :merge3, so it can be used safely even by users who have their
-     hgrc set to do an interactive merge by default.
-
-     [`Unique_other_head] will only work in a repo that has exactly two heads and only if
-     the working revision is one of those heads.
-  *)
   val merge
     : (?tool:string
        -> ?allow_commit_without_bookmark:unit

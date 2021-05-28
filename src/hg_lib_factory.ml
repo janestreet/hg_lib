@@ -1,4 +1,5 @@
 open Core
+module Unix = Core_unix
 include Hg_lib_factory_intf
 
 module With_global_args = struct

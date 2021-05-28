@@ -53,14 +53,7 @@ module Make (A : Arg) = struct
           ; template_args template
           ; [ filename ]
           ])
-      ~handle_output:(fun o ->
-        match o.exit_status with
-        | Ok () ->
-          o.stdout
-          |> String.split ~on:'\n'
-          |> List.filter ~f:(Fn.non String.is_empty)
-          |> Ok
-        | Error _ -> unexpected_exit_error o)
+      ~handle_output:expect_0_stdout_list
 
   let archive =
     command "archive"
