@@ -162,17 +162,29 @@ module Make (A : Arg) = struct
   let commit =
     command "commit"
       (fun run ?addremove ?allow_commit_without_bookmark ?includes ?excludes ~message
-        ?date ?user ?files () ->
+        ?time ?zone ?user ?files () ->
         match files with
         | Some [] -> return `Nothing_changed
         | _ ->
+          let time_with_utc_offset =
+            match time, zone with
+            | Some time, Some zone ->
+              Some (Time_with_utc_offset.of_time_with_zone ~zone time)
+            | Some time, None      ->
+              let zone = force Time.Zone.local in
+              Some (Time_with_utc_offset.of_time_with_zone ~zone time)
+            | None     , Some zone ->
+              let time = Time.now () in
+              Some (Time_with_utc_offset.of_time_with_zone ~zone time)
+            | None     , None      -> None
+          in
           run [
             no_arg "--addremove" addremove;
             no_arg "--allow-commit-without-bookmark" allow_commit_without_bookmark;
             includes_args includes;
             excludes_args excludes;
             ["--message"; message];
-            date_args date;
+            time_args time_with_utc_offset;
             with_arg "--user" user;
             Option.value files ~default:[];
           ])
@@ -515,7 +527,7 @@ module Make (A : Arg) = struct
         in
         run [
           all_args all;
-          date_args date;
+          date_range_args date;
           rev_args rev;
           no_arg "--no-backup" no_backup;
           includes_args includes;
@@ -599,7 +611,7 @@ module Make (A : Arg) = struct
       run [
         no_arg "--clean" clean;
         no_arg "--check" check;
-        date_args date;
+        date_range_args date;
         rev_args rev;
       ])
       ~handle_output:expect_0

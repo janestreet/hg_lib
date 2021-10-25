@@ -317,6 +317,40 @@ module File_status = struct
   include Public
 end
 
+(** See "hg help dates". *)
+module Time_with_utc_offset = struct
+  type t =
+    { time       : Time.t
+    ; utc_offset : Time.Span.t
+    }
+
+  let of_time_with_zone ~zone time = { time; utc_offset = Time.utc_offset ~zone time }
+
+  let to_string t =
+    let secs_since_epoch =
+      Time.to_span_since_epoch t.time |> Time.Span.to_sec |> Float.iround_towards_zero_exn
+    in
+    let secs_west_of_utc =
+      t.utc_offset |> Time.Span.neg |> Time.Span.to_sec |> Float.iround_towards_zero_exn
+    in
+    sprintf "%d %d" secs_since_epoch secs_west_of_utc
+  ;;
+
+  let%expect_test "to_string" =
+    (*
+       $ TZ=Etc/Utc date --date '2001-02-03 04:05:06' +%s
+       981173106
+    *)
+    let time = Time.of_string_with_utc_offset "2001-02-03 04:05:06Z" in
+    of_time_with_zone ~zone:Time.Zone.utc time |> to_string |> print_endline;
+    [%expect {| 981173106 0 |}];
+    of_time_with_zone ~zone:(Time.Zone.of_string "America/New_York") time
+    |> to_string
+    |> print_endline;
+    [%expect {| 981173106 18000 |}]
+  ;;
+end
+
 module Date_param = struct
   module Public = struct
     module Time_point = struct
@@ -440,7 +474,8 @@ module Command_helpers = struct
   let template_args  = with_arg "--template"
 
   let date_range_args = with_arg' "--date" Date_param.to_string
-  let date_args       = with_arg' "--date" Date.to_string
+  let time_args       = with_arg' "--date" Time_with_utc_offset.to_string
+
   let limit_args      = with_arg' "--limit" Int.to_string
   let unified_args    = with_arg' "--unified" Int.to_string
 

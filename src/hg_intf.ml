@@ -1,4 +1,3 @@
-open Core
 open Hg_private
 
 module type S = sig
@@ -113,7 +112,11 @@ module type S = sig
        -> ?includes:string list
        -> ?excludes:string list
        -> message:string
-       -> ?date:Date.t
+       -> ?time:Time.t
+       (** Defaults to the current time. *)
+       -> ?zone:Time.Zone.t
+       (** Mercurial commit times require an explicit UTC offset. Defaults to the local
+           time zone. *)
        -> ?user:string
        -> ?files:string list
        -> unit
@@ -321,7 +324,7 @@ module type S = sig
     ([ `All_files | `These_files of string list ] -> unit output) with_args
 
   val revert
-    : (?date:Date.t
+    : (?date:Date_param.t
        -> ?rev:string
        -> ?no_backup:unit
        -> ?includes:string list
@@ -377,7 +380,7 @@ module type S = sig
   val update
     : (?clean:unit
        -> ?check:unit
-       -> ?date:Date.t
+       -> ?date:Date_param.t
        -> ?rev:string
        -> unit
        -> unit output

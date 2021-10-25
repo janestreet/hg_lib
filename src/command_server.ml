@@ -209,7 +209,15 @@ let create ?env ?(hg_binary="hg") ?config ~accepted_encodings ssh =
       "ssh", options @ [user_string ^ host; "--"; hg_binary]
   in
   let args = extra_args @ ["serve"; "--cmdserver"; "pipe"] @ config in
-  Process.create ?env ~prog ~args ()
+  (match ssh with
+   | None ->
+     (* When running a local server, start it in the user's home directory. This makes it
+        consistent with running a remote server. *)
+     Monitor.try_with_or_error ~here:[%here] Sys.home_directory
+     >>|? Option.return
+   | Some _ -> return (Ok None))
+  >>=? fun working_dir ->
+  Process.create ?env ?working_dir ~prog ~args ()
   >>=? fun process ->
   let hello_result =
     Channel_IO.read (Process.stdout process)
