@@ -12,6 +12,7 @@ build: [
 depends: [
   "ocaml" {>= "4.11.0"}
   "async"
+  "core"
   "core_kernel"
   "expect_test_helpers_core"
   "ppx_jane"
