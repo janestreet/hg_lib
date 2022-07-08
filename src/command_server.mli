@@ -5,11 +5,11 @@ open! Async
 type t
 
 module Ssh : sig
-  type t = {
-    host : string;
-    user : string option;
-    options : string list;
-  }
+  type t =
+    { host : string
+    ; user : string option
+    ; options : string list
+    }
 end
 
 (** [create addr] starts an hg command server at that location *)
@@ -25,5 +25,4 @@ val create
 val destroy : t -> unit Deferred.t
 
 (** [run_command t ~cwd args] uses [t] to run "hg $args" in [cwd] *)
-val run_command :
-  t -> cwd:string -> string list -> Process.Output.t Or_error.t Deferred.t
+val run_command : t -> cwd:string -> string list -> Process.Output.t Or_error.t Deferred.t
