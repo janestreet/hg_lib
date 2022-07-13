@@ -1,4 +1,5 @@
 open Core
+module Process = Async.Process
 open Hg_lib_factory
 include Hg_intf
 
@@ -12,6 +13,13 @@ module Make (A : Arg) = struct
     let handle_output o = Or_simple_error.create (handle_output o) in
     A.With_args.map A.run ~f:(fun run ->
       f (fun argses -> run ~args:(name :: List.concat argses) ~handle_output ()))
+  ;;
+
+  (* This variation of [command] lets you choose the output handler dynamically. *)
+  let command' name f =
+    A.With_args.map A.run ~f:(fun run ->
+      f (fun argses ~handle_output ->
+        run ~args:(name :: List.concat argses) ~handle_output ()))
   ;;
 
   (* commands *)
@@ -85,7 +93,7 @@ module Make (A : Arg) = struct
           ; no_arg "--ignore-space-at-eol" ignore_space_at_eol
           ; includes_args includes
           ; excludes_args excludes
-          ; template_args template
+          ; template_args (`Custom template)
           ; [ filename ]
           ])
       ~handle_output:expect_0_stdout_list
@@ -221,7 +229,7 @@ module Make (A : Arg) = struct
            [ includes_args includes
            ; excludes_args excludes
            ; revs_args (Option.map ~f:List.return rev)
-           ; template_args template
+           ; template_args (`Custom template)
            ; [ path ]
            ; (match destination with
               | Destination.String -> []
@@ -394,24 +402,30 @@ module Make (A : Arg) = struct
   ;;
 
   let heads =
-    command
-      "heads"
-      (fun run ?rev ?topo ?closed () ->
-         run
-           [ with_arg "--rev" rev
-           ; no_arg "--topo" topo
-           ; no_arg "--closed" closed
-           ; [ "--template"; Changeset_info.template ]
-           ])
-      ~handle_output:(fun o ->
-        match o.exit_status with
-        | Error _ ->
-          (* 1 is documented as "no matching heads found," but I think this only comes up
-             if you're closing branch heads, which we don't really do. Rather than making
-             everyone explicitly deal with an error case that's very unlikely to come up,
-             we'll just report it as a generic error. *)
-          non_0_exit_error o
-        | Ok () -> Changeset_info.of_templated_stdout o.stdout)
+    command' "heads" (fun run ?rev ?topo ?closed ?include_files_in_changeset_info () ->
+      let template =
+        { Changeset_info.Template.include_files =
+            Option.is_some include_files_in_changeset_info
+        }
+      in
+      let handle_output (output : Process.Output.t) =
+        (match output.exit_status with
+         | Error _ ->
+           (* 1 is documented as "no matching heads found," but I think this only comes
+              up if you're closing branch heads, which we don't really do. Rather than
+              making everyone explicitly deal with an error case that's very unlikely
+              to come up, we'll just report it as a generic error. *)
+           non_0_exit_error output
+         | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
+        |> Or_simple_error.create
+      in
+      run
+        ~handle_output
+        [ with_arg "--rev" rev
+        ; no_arg "--topo" topo
+        ; no_arg "--closed" closed
+        ; template_args (`For_changeset_info template)
+        ])
   ;;
 
   let id =
@@ -446,9 +460,10 @@ module Make (A : Arg) = struct
   ;;
 
   let log =
-    command
+    command'
       "log"
-      (fun run
+      (fun
+        run
         ?follow
         ?date
         ?copies
@@ -463,31 +478,41 @@ module Make (A : Arg) = struct
         ?includes
         ?excludes
         ?files
-        () ->
-        match files with
-        | Some [] -> return []
-        | _ ->
-          run
-            [ no_arg "--follow" follow
-            ; date_range_args date
-            ; no_arg "--copies" copies
-            ; keywords_args keywords
-            ; revs_args revs
-            ; no_arg "--removed" removed
-            ; repeated "--user" users
-            ; branches_args branches
-            ; repeated "--prune" prune_revs
-            ; limit_args limit
-            ; no_arg "--no-merges" no_merges
-            ; includes_args includes
-            ; excludes_args excludes
-            ; [ "--template"; Changeset_info.template ]
-            ; Option.value files ~default:[]
-            ])
-      ~handle_output:(fun o ->
-        match o.exit_status with
-        | Error _ -> non_0_exit_error o
-        | Ok () -> Changeset_info.of_templated_stdout o.stdout)
+        ?include_files_in_changeset_info
+        ()
+        ->
+          let template =
+            { Changeset_info.Template.include_files =
+                Option.is_some include_files_in_changeset_info
+            }
+          in
+          let handle_output (output : Process.Output.t) =
+            (match output.exit_status with
+             | Error _ -> non_0_exit_error output
+             | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
+            |> Or_simple_error.create
+          in
+          match files with
+          | Some [] -> return []
+          | _ ->
+            run
+              ~handle_output
+              [ no_arg "--follow" follow
+              ; date_range_args date
+              ; no_arg "--copies" copies
+              ; keywords_args keywords
+              ; revs_args revs
+              ; no_arg "--removed" removed
+              ; repeated "--user" users
+              ; branches_args branches
+              ; repeated "--prune" prune_revs
+              ; limit_args limit
+              ; no_arg "--no-merges" no_merges
+              ; includes_args includes
+              ; excludes_args excludes
+              ; template_args (`For_changeset_info template)
+              ; Option.value files ~default:[]
+              ])
   ;;
 
   let manifest =
@@ -525,26 +550,46 @@ module Make (A : Arg) = struct
   ;;
 
   let out =
-    command
+    command'
       "out"
-      (fun run ?force ?revs ?limit ?no_merges ?ssh ?remotecmd ?insecure ?remote_path () ->
-         run
-           [ no_arg "--force" force
-           ; revs_args revs
-           ; limit_args limit
-           ; no_arg "--no-merges" no_merges
-           ; ssh_args ssh
-           ; remotecmd_args remotecmd
-           ; insecure_args insecure
-           ; [ "--quiet" ]
-           ; [ "--template"; Changeset_info.template ]
-           ; Option.to_list remote_path
-           ])
-      ~handle_output:(fun o ->
-        match o.exit_status with
-        | Error (`Exit_non_zero 1) -> Ok []
-        | Error _ -> unexpected_exit_error o
-        | Ok () -> Changeset_info.of_templated_stdout o.stdout)
+      (fun
+        run
+        ?force
+        ?revs
+        ?limit
+        ?no_merges
+        ?ssh
+        ?remotecmd
+        ?insecure
+        ?remote_path
+        ?include_files_in_changeset_info
+        ()
+        ->
+          let template =
+            { Changeset_info.Template.include_files =
+                Option.is_some include_files_in_changeset_info
+            }
+          in
+          let handle_output (output : Process.Output.t) =
+            (match output.exit_status with
+             | Error (`Exit_non_zero 1) -> Ok []
+             | Error _ -> unexpected_exit_error output
+             | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
+            |> Or_simple_error.create
+          in
+          run
+            ~handle_output
+            [ no_arg "--force" force
+            ; revs_args revs
+            ; limit_args limit
+            ; no_arg "--no-merges" no_merges
+            ; ssh_args ssh
+            ; remotecmd_args remotecmd
+            ; insecure_args insecure
+            ; [ "--quiet" ]
+            ; template_args (`For_changeset_info template)
+            ; Option.to_list remote_path
+            ])
   ;;
 
   let pull =

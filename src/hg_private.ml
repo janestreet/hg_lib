@@ -22,6 +22,8 @@ module Changeset_info = struct
       ; time : Time.t
       ; tags : string list
       ; description : string
+      ; files : [ `Omitted | `Files of string list ]
+                [@sexp.default `Omitted] [@sexp_drop_default.equal]
       }
     [@@deriving sexp, fields, compare]
 
@@ -51,18 +53,23 @@ module Changeset_info = struct
 
   include Public
 
-  let template =
-    [ "{node} {rev}"
-    ; "{p1.node} {p1.rev}"
-    ; "{p2.node} {p2.rev}"
-    ; "{author|emailuser}"
-    ; "{date|hgdate}"
-    ; "{tags}"
-    ; "{desc|tabindent}"
-    ; ""
-    ]
-    |> String.concat ~sep:"\\n"
-  ;;
+  module Template = struct
+    type t = { include_files : bool }
+
+    let to_string { include_files } =
+      [ "{node} {rev}"
+      ; "{p1.node} {p1.rev}"
+      ; "{p2.node} {p2.rev}"
+      ; "{author|emailuser}"
+      ; "{date|hgdate}"
+      ; "{tags}"
+      ; (if include_files then {|{join(files, '\000')}|} else "")
+      ; "{desc|tabindent}"
+      ; ""
+      ]
+      |> String.concat ~sep:"\\n"
+    ;;
+  end
 
   let time_of_hgtime hgdate =
     (* The format is '<unix timestamp of commit> <timezone offset of commit in
@@ -86,7 +93,7 @@ module Changeset_info = struct
       ~expect:(Time.of_string "2015-04-22 16:09:53+01:00")
   ;;
 
-  let of_templated_stdout stdout =
+  let of_templated_stdout stdout { Template.include_files } =
     (* Every log entry has a newline appended to it. So [String.split ~on:'\n'] will
        necessarily give us an extra empty chunk. This is true even for empty input.
        Using [String.split_lines] would maybe be nicer, but it also splits on \r\n so it
@@ -102,7 +109,7 @@ module Changeset_info = struct
     let rec aux acc lines =
       match lines with
       | [] -> List.rev acc
-      | node :: p1 :: p2 :: author :: time :: tags :: first_desc :: tl ->
+      | node :: p1 :: p2 :: author :: time :: tags :: files :: first_desc :: tl ->
         let end_desc, remainder =
           List.split_while tl ~f:(fun line ->
             (* tabindent does *not* change blank lines to "\t", which is a little
@@ -116,6 +123,14 @@ module Changeset_info = struct
           let global_id, local_revision = String.lsplit2_exn ~on:' ' str in
           let local_revision = Int.of_string local_revision in
           { Node.global_id; local_revision }
+        in
+        let files =
+          match include_files with
+          | false -> `Omitted
+          | true ->
+            (match files with
+             | "" -> `Files []
+             | files_str -> `Files (String.split files_str ~on:'\000'))
         in
         let node = node_of_string node in
         let parents =
@@ -135,6 +150,7 @@ module Changeset_info = struct
               String.split ~on:' ' tags
               |> List.filter ~f:(fun s -> not (String.is_empty s))
           ; description
+          ; files
           }
         in
         aux (changeset :: acc) remainder
@@ -155,12 +171,14 @@ module Changeset_info = struct
        username\n\
        1609662832 18000\n\
        first-tag second-tag third-tag\n\
+       fakefilename.txt\n\
        rebase to [123454321098] with ancestor [fedcba987654]\n\
        fedcba9876543210fedcba9876543210fedcba98 2\n\
        fedcbabcdef678909876543212345fedcbabcdef 1\n\
        0000000000000000000000000000000000000000 -1\n\
        username\n\
        1609511270 18000\n\n\
+       fakefilename2.txt\n\
        some commit description\n"
     in
     let t1 =
@@ -178,6 +196,7 @@ module Changeset_info = struct
       ; time = Time.of_string "2021-01-03 03:33:52-05:00"
       ; tags = [ "first-tag"; "second-tag"; "third-tag" ]
       ; description = "rebase to [123454321098] with ancestor [fedcba987654]"
+      ; files = `Files [ "fakefilename.txt" ]
       }
     in
     let t2 =
@@ -190,9 +209,12 @@ module Changeset_info = struct
       ; time = Time.of_string "2021-01-01 09:27:50-05:00"
       ; tags = []
       ; description = "some commit description"
+      ; files = `Files [ "fakefilename2.txt" ]
       }
     in
-    [%test_result: t list Or_error.t] (of_templated_stdout stdout) ~expect:(Ok [ t1; t2 ]);
+    [%test_result: t list Or_error.t]
+      (of_templated_stdout stdout { include_files = true })
+      ~expect:(Ok [ t1; t2 ]);
     [%test_result: string]
       ([ t1; t2 ] |> List.map ~f:to_hg_style_string |> String.concat ~sep:"\n\n")
       ~expect:
@@ -212,33 +234,71 @@ module Changeset_info = struct
          summary:     some commit description"
   ;;
 
+  let%test_unit "null bytes separating files" =
+    let stdout =
+      "0123456789abcdef0123456789abcdef01234567 4\n\
+       fedcba9876543210fedcba9876543210fedcba98 2\n\
+       123454321098767890abcdefedcba12345432109 3\n\
+       username\n\
+       1609662832 18000\n\
+       first-tag second-tag third-tag\n\
+       fakefilename.txt\000fakefilename2.txt\n\
+       rebase to [123454321098] with ancestor [fedcba987654]\n"
+    in
+    let t1 =
+      { node =
+          { global_id = "0123456789abcdef0123456789abcdef01234567"; local_revision = 4 }
+      ; parents =
+          `Two
+            ( { global_id = "fedcba9876543210fedcba9876543210fedcba98"
+              ; local_revision = 2
+              }
+            , { global_id = "123454321098767890abcdefedcba12345432109"
+              ; local_revision = 3
+              } )
+      ; author = "username"
+      ; time = Time.of_string "2021-01-03 03:33:52-05:00"
+      ; tags = [ "first-tag"; "second-tag"; "third-tag" ]
+      ; description = "rebase to [123454321098] with ancestor [fedcba987654]"
+      ; files = `Files [ "fakefilename.txt"; "fakefilename2.txt" ]
+      }
+    in
+    [%test_result: t list Or_error.t]
+      (of_templated_stdout stdout { include_files = true })
+      ~expect:(Ok [ t1 ])
+  ;;
+
   let%test_unit "heads in empty repo" =
     let stdout =
       "0000000000000000000000000000000000000000 -1\n\
        0000000000000000000000000000000000000000 -1\n\
        0000000000000000000000000000000000000000 -1\n\n\
-       0 0\n\n\n"
+       0 0\n\n\n\n"
+    in
+    let expected =
+      { node =
+          { global_id = "0000000000000000000000000000000000000000"; local_revision = -1 }
+      ; parents = `Zero
+      ; author = ""
+      ; time = Time.epoch
+      ; tags = []
+      ; description = ""
+      ; files = `Omitted
+      }
     in
     [%test_result: t list Or_error.t]
-      (of_templated_stdout stdout)
-      ~expect:
-        (Ok
-           [ { node =
-                 { global_id = "0000000000000000000000000000000000000000"
-                 ; local_revision = -1
-                 }
-             ; parents = `Zero
-             ; author = ""
-             ; time = Time.epoch
-             ; tags = []
-             ; description = ""
-             }
-           ])
+      (of_templated_stdout stdout { include_files = false })
+      ~expect:(Ok [ expected ]);
+    [%test_result: t list Or_error.t]
+      (of_templated_stdout stdout { include_files = true })
+      ~expect:(Ok [ { expected with files = `Files [] } ])
   ;;
 
   let%test_unit "empty stdout" =
     let stdout = "" in
-    [%test_result: t list Or_error.t] (of_templated_stdout stdout) ~expect:(Ok [])
+    [%test_result: t list Or_error.t]
+      (of_templated_stdout stdout { include_files = false })
+      ~expect:(Ok [])
   ;;
 end
 
@@ -472,7 +532,16 @@ module Command_helpers = struct
   let remotecmd_args = with_arg "--remotecmd"
   let rev_args = with_arg "--rev"
   let ssh_args = with_arg "--ssh"
-  let template_args = with_arg "--template"
+
+  let template_args flag =
+    let arg =
+      match flag with
+      | `Custom template -> template
+      | `For_changeset_info template -> Some (Changeset_info.Template.to_string template)
+    in
+    with_arg "--template" arg
+  ;;
+
   let date_range_args = with_arg' "--date" Date_param.to_string
   let time_args = with_arg' "--date" Time_with_utc_offset.to_string
   let limit_args = with_arg' "--limit" Int.to_string

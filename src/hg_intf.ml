@@ -184,7 +184,12 @@ module type S = sig
         with_args
 
   val heads
-    : (?rev:string -> ?topo:unit -> ?closed:unit -> unit -> Changeset_info.t list output)
+    : (?rev:string
+       -> ?topo:unit
+       -> ?closed:unit
+       -> ?include_files_in_changeset_info:unit
+       -> unit
+       -> Changeset_info.t list output)
         with_args
 
   (* Despite the name, this actually calls `hg log --rev $rev --template {node}` to get
@@ -220,6 +225,7 @@ module type S = sig
        -> ?includes:string list
        -> ?excludes:string list
        -> ?files:string list
+       -> ?include_files_in_changeset_info:unit
        -> unit
        -> Changeset_info.t list output)
         with_args
@@ -242,6 +248,7 @@ module type S = sig
        -> ?remotecmd:string
        -> ?insecure:unit
        -> ?remote_path:string
+       -> ?include_files_in_changeset_info:unit
        -> unit
        -> Changeset_info.t list output)
         with_args
