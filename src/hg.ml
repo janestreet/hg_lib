@@ -840,6 +840,18 @@ module Make (A : Arg) = struct
            ])
       ~handle_output:expect_0
   ;;
+
+  let get_default_url =
+    command
+      "show"
+      (fun run () -> run [ [ "paths.default" ] ])
+      ~handle_output:(fun o ->
+        match o.exit_status with
+        | Ok () -> Ok (Some (String.strip o.stdout))
+        | Error (`Exit_non_zero 1)
+          when String.is_empty o.stdout && String.is_empty o.stderr -> Ok None
+        | Error _ -> non_0_exit_error o)
+  ;;
 end
 
 module Simple = Make (Simple)

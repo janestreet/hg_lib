@@ -367,6 +367,9 @@ module type S = sig
        -> unit
        -> unit output)
         with_args
+
+  (** [hg show paths.default] *)
+  val get_default_url : (unit -> string option output) with_args
 end
 
 module Make_s (A : Hg_lib_factory.Arg) = struct
