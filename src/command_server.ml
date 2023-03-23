@@ -50,7 +50,8 @@ end = struct
                [%sexp_of: [ `Output | `Error | `Result ] * int * string]
            | `Ok ->
              (match channel with
-              | (`Output | `Error) as channel -> Ok (`Message (channel, Bytes.to_string buf))
+              | (`Output | `Error) as channel ->
+                Ok (`Message (channel, Bytes.to_string buf))
               | `Result ->
                 Ok (`Result (Binary_packing.unpack_signed_32_int_big_endian ~buf ~pos:0)))))
   ;;
