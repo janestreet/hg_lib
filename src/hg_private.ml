@@ -7,7 +7,7 @@ module Node = struct
       { global_id : string
       ; local_revision : int
       }
-    [@@deriving sexp, fields, compare]
+    [@@deriving sexp, fields ~getters, compare]
   end
 
   include Public
@@ -25,7 +25,7 @@ module Changeset_info = struct
       ; files : [ `Omitted | `Files of string list ]
                 [@sexp.default `Omitted] [@sexp_drop_default.equal]
       }
-    [@@deriving sexp, fields, compare]
+    [@@deriving sexp, fields ~getters, compare]
 
     let to_hg_style_string t =
       let node { Node.global_id; local_revision } =
@@ -309,7 +309,7 @@ module Bookmark = struct
       ; name : string
       ; revision_id : string
       }
-    [@@deriving sexp, fields]
+    [@@deriving sexp, fields ~getters]
   end
 
   include Public
@@ -335,7 +335,7 @@ module Tag = struct
       ; revision_num : int
       ; revision_id : string
       }
-    [@@deriving sexp, fields]
+    [@@deriving sexp, fields ~getters]
   end
 
   include Public

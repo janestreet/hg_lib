@@ -52,7 +52,7 @@ end
 module type Hg_env = sig
   val hg_binary : string
   val hgrc_path : string
-  val hg_user : string
+  val hg_user : string Lazy.t
   val hg_config_options : (string * string) list
 end
 
