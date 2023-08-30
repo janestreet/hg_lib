@@ -43,17 +43,17 @@ end = struct
          let buf = Bytes.create len in
          Reader.really_read child_stdout buf
          >>| (function
-           | `Eof len ->
-             Or_error.error
-               "eof while reading message"
-               (channel, len, Bytes.To_string.sub buf ~pos:0 ~len)
-               [%sexp_of: [ `Output | `Error | `Result ] * int * string]
-           | `Ok ->
-             (match channel with
-              | (`Output | `Error) as channel ->
-                Ok (`Message (channel, Bytes.to_string buf))
-              | `Result ->
-                Ok (`Result (Binary_packing.unpack_signed_32_int_big_endian ~buf ~pos:0)))))
+         | `Eof len ->
+           Or_error.error
+             "eof while reading message"
+             (channel, len, Bytes.To_string.sub buf ~pos:0 ~len)
+             [%sexp_of: [ `Output | `Error | `Result ] * int * string]
+         | `Ok ->
+           (match channel with
+            | (`Output | `Error) as channel ->
+              Ok (`Message (channel, Bytes.to_string buf))
+            | `Result ->
+              Ok (`Result (Binary_packing.unpack_signed_32_int_big_endian ~buf ~pos:0)))))
   ;;
 
   let read_full child_stdout =
@@ -89,10 +89,10 @@ end = struct
       ~rest:`Log
       (* consider [`Raise] instead; see: https://wiki/x/Ux4xF *)
       (fun () ->
-         Writer.write child_stdin "runcommand\n";
-         Writer.write_bytes child_stdin buf;
-         Writer.write child_stdin command;
-         Writer.flushed child_stdin)
+      Writer.write child_stdin "runcommand\n";
+      Writer.write_bytes child_stdin buf;
+      Writer.write child_stdin command;
+      Writer.flushed child_stdin)
     >>| function
     | Ok _ as ok -> ok
     | Error exn ->

@@ -17,8 +17,8 @@ module With_global_args = struct
   let prepend_to_args ~repository ~cwd ~config args =
     List.concat
       [ (match repository with
-          | None -> []
-          | Some repo -> [ "--repository"; repo ])
+         | None -> []
+         | Some repo -> [ "--repository"; repo ])
       ; (match cwd with
          | None -> []
          | Some cwd -> [ "--cwd"; cwd ])
@@ -45,8 +45,8 @@ module With_global_args_remote = struct
   let prepend_to_args ~repository ~config args =
     List.concat
       [ (match repository with
-          | None -> []
-          | Some repo -> [ "--repository"; repo ])
+         | None -> []
+         | Some repo -> [ "--repository"; repo ])
       ; (match config with
          | None -> []
          | Some config ->

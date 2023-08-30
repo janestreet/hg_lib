@@ -42,7 +42,7 @@ module type Arg = sig
        -> handle_output:(Process.Output.t -> 'a Or_simple_error.t)
        -> unit
        -> 'a Output.t)
-        With_args.t
+      With_args.t
 end
 
 module type Make_s = functor (_ : Arg) -> sig
@@ -82,8 +82,8 @@ module type Hg_lib_factory = sig
 
   module Async :
     Arg
-    with type 'a With_args.t = 'a with_global_args
-    with type 'a Output.t = 'a Deferred.Or_error.t
+      with type 'a With_args.t = 'a with_global_args
+      with type 'a Output.t = 'a Deferred.Or_error.t
 
   (** Same as Async, but with the following changes to fix the hg environment:
       - hardwire a particular version of hg as stated by [hg_binary]
@@ -93,13 +93,13 @@ module type Hg_lib_factory = sig
   *)
   module Fixed_hg_environment (_ : Hg_env) :
     Arg
-    with type 'a With_args.t = 'a with_global_args
-    with type 'a Output.t = 'a Deferred.Or_error.t
+      with type 'a With_args.t = 'a with_global_args
+      with type 'a Output.t = 'a Deferred.Or_error.t
 
   module Remote :
     Arg
-    with type 'a With_args.t = 'a with_global_args_remote
-    with type 'a Output.t = 'a Deferred.Or_error.t
+      with type 'a With_args.t = 'a with_global_args_remote
+      with type 'a Output.t = 'a Deferred.Or_error.t
 
   (** To satisfy this functor, define a signature [S] for your hg library with respect to
       the abstract type constructors ['a with_args] and ['a output]. Then generate the

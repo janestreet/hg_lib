@@ -23,7 +23,7 @@ module Changeset_info = struct
       ; tags : string list
       ; description : string
       ; files : [ `Omitted | `Files of string list ]
-                [@sexp.default `Omitted] [@sexp_drop_default.equal]
+           [@sexp.default `Omitted] [@sexp_drop_default.equal]
       }
     [@@deriving sexp, fields ~getters, compare]
 
@@ -102,8 +102,8 @@ module Changeset_info = struct
       String.split ~on:'\n' stdout
       |> List.rev
       |> (function
-        | "" :: rest -> rest
-        | _lines -> failwith "Does not end with a newline character")
+           | "" :: rest -> rest
+           | _lines -> failwith "Does not end with a newline character")
       |> List.rev
     in
     let rec aux acc lines =
