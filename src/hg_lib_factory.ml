@@ -130,7 +130,7 @@ module Fixed_hg_environment (E : Hg_env) = struct
     let config = Option.map config ~f:(fun config -> E.hg_config_options @ config) in
     let args = With_global_args.prepend_to_args ~repository ~cwd ~config args in
     let env =
-      let tuples = [ "HGRCPATH", E.hgrc_path; "HG_USER", Lazy.force E.hg_user ] in
+      let tuples = [ "HGRCPATH", E.hgrc_path; "HGUSER", Lazy.force E.hg_user ] in
       match env with
       | None -> `Extend tuples
       | Some (`Extend envs) -> `Extend (tuples @ envs)
