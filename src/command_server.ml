@@ -200,7 +200,7 @@ let%expect_test "report both errors" =
       ("encoding unacceptable; this can be caused by incorrect locale settings, check the output of the `locale` command"
        (accepted_encodings (UTF-8))
        (encoding ascii))))
-  |}];
+    |}];
   return ()
 ;;
 
