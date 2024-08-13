@@ -1,6 +1,7 @@
 (library
  (name open_hg_lib)
  (public_name hg_lib.open)
- (libraries async core_kernel.binary_packing core expect_test_helpers_core)
+ (libraries async core_kernel.binary_packing core core_unix
+   expect_test_helpers_core core_unix.time_float_unix)
  (preprocess
   (pps ppx_jane)))

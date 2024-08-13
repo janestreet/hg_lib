@@ -43,17 +43,17 @@ end = struct
          let buf = Bytes.create len in
          Reader.really_read child_stdout buf
          >>| (function
-         | `Eof len ->
-           Or_error.error
-             "eof while reading message"
-             (channel, len, Bytes.To_string.sub buf ~pos:0 ~len)
-             [%sexp_of: [ `Output | `Error | `Result ] * int * string]
-         | `Ok ->
-           (match channel with
-            | (`Output | `Error) as channel ->
-              Ok (`Message (channel, Bytes.to_string buf))
-            | `Result ->
-              Ok (`Result (Binary_packing.unpack_signed_32_int_big_endian ~buf ~pos:0)))))
+          | `Eof len ->
+            Or_error.error
+              "eof while reading message"
+              (channel, len, Bytes.To_string.sub buf ~pos:0 ~len)
+              [%sexp_of: [ `Output | `Error | `Result ] * int * string]
+          | `Ok ->
+            (match channel with
+             | (`Output | `Error) as channel ->
+               Ok (`Message (channel, Bytes.to_string buf))
+             | `Result ->
+               Ok (`Result (Binary_packing.unpack_signed_32_int_big_endian ~buf ~pos:0)))))
   ;;
 
   let read_full child_stdout =
@@ -89,10 +89,10 @@ end = struct
       ~rest:`Log
       (* consider [`Raise] instead; see: https://wiki/x/Ux4xF *)
       (fun () ->
-      Writer.write child_stdin "runcommand\n";
-      Writer.write_bytes child_stdin buf;
-      Writer.write child_stdin command;
-      Writer.flushed child_stdin)
+         Writer.write child_stdin "runcommand\n";
+         Writer.write_bytes child_stdin buf;
+         Writer.write child_stdin command;
+         Writer.flushed child_stdin)
     >>| function
     | Ok _ as ok -> ok
     | Error exn ->
@@ -114,7 +114,7 @@ let valid_hello ~accepted_encodings hello =
   let accepted_encodings =
     List.map accepted_encodings ~f:(function
       | `Ascii -> "ascii"
-      | `Utf8 -> "UTF-8")
+      | `Utf8 -> "utf-8")
   in
   let attrs =
     List.filter_map (String.split ~on:'\n' hello) ~f:(fun line ->
@@ -139,7 +139,7 @@ let valid_hello ~accepted_encodings hello =
             [%message
               "capabilities don't include runcommand" (capabilities : string list)])
     ; check "encoding" ~f:(fun encoding ->
-        if List.mem ~equal:String.equal accepted_encodings encoding
+        if List.mem ~equal:String.equal accepted_encodings (String.lowercase encoding)
         then Ok ()
         else
           Or_error.error_s
@@ -198,7 +198,7 @@ let%expect_test "report both errors" =
     (raised (
       ("capabilities don't include runcommand" (capabilities (getencoding)))
       ("encoding unacceptable; this can be caused by incorrect locale settings, check the output of the `locale` command"
-       (accepted_encodings (UTF-8))
+       (accepted_encodings (utf-8))
        (encoding ascii))))
     |}];
   return ()

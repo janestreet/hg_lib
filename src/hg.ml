@@ -7,6 +7,9 @@ module Make (A : Arg) = struct
   open Hg_private
   open Command_helpers
 
+  module type S =
+    S with type 'a with_args := 'a A.With_args.t with type 'a output := 'a A.Output.t
+
   let return = A.Output.return
 
   let command name f ~handle_output =
@@ -63,20 +66,20 @@ module Make (A : Arg) = struct
     command
       "annotate"
       (fun run
-           ?rev
-           ?user
-           ?file
-           ?date
-           ?number
-           ?changeset
-           ?skip
-           ?ignore_space_change
-           ?ignore_blank_lines
-           ?ignore_space_at_eol
-           ?includes
-           ?excludes
-           ?template
-           filename ->
+        ?rev
+        ?user
+        ?file
+        ?date
+        ?number
+        ?changeset
+        ?skip
+        ?ignore_space_change
+        ?ignore_blank_lines
+        ?ignore_space_at_eol
+        ?includes
+        ?excludes
+        ?template
+        filename ->
         run
           [ rev_args rev
           ; no_arg "--user" user
@@ -103,15 +106,15 @@ module Make (A : Arg) = struct
     command
       "archive"
       (fun run
-           ?no_decode
-           ?prefix
-           ?rev
-           ?type_
-           ?subrepos
-           ?includes
-           ?excludes
-           ~destination
-           () ->
+        ?no_decode
+        ?prefix
+        ?rev
+        ?type_
+        ?subrepos
+        ?includes
+        ?excludes
+        ~destination
+        () ->
         run
           [ no_arg "--no-decode" no_decode
           ; with_arg "--prefix" prefix
@@ -154,17 +157,17 @@ module Make (A : Arg) = struct
     command
       "bundle"
       (fun run
-           ?force
-           ?revs
-           ?branches
-           ?bases
-           ?all
-           ?compression_type
-           ?ssh
-           ?remotecmd
-           ?insecure
-           ?destination
-           bundle_file ->
+        ?force
+        ?revs
+        ?branches
+        ?bases
+        ?all
+        ?compression_type
+        ?ssh
+        ?remotecmd
+        ?insecure
+        ?destination
+        bundle_file ->
         run
           [ force_args force
           ; revs_args revs
@@ -189,17 +192,17 @@ module Make (A : Arg) = struct
     command
       "clone"
       (fun run
-           ~source
-           ?destination
-           ?update
-           ?revs
-           ?branches
-           ?pull
-           ?uncompressed
-           ?ssh
-           ?remotecmd
-           ?insecure
-           () ->
+        ~source
+        ?destination
+        ?update
+        ?revs
+        ?branches
+        ?pull
+        ?uncompressed
+        ?ssh
+        ?remotecmd
+        ?insecure
+        () ->
         let update =
           match update with
           | Some `No_update -> [ "--noupdate" ]
@@ -246,16 +249,16 @@ module Make (A : Arg) = struct
     command
       "commit"
       (fun run
-           ?addremove
-           ?allow_commit_without_bookmark
-           ?includes
-           ?excludes
-           ~message
-           ?time
-           ?zone
-           ?user
-           ?files
-           () ->
+        ?addremove
+        ?allow_commit_without_bookmark
+        ?includes
+        ?excludes
+        ~message
+        ?time
+        ?zone
+        ?user
+        ?files
+        () ->
         match files with
         | Some [] -> return `Nothing_changed
         | _ ->
@@ -325,21 +328,21 @@ module Make (A : Arg) = struct
     command
       "diff"
       (fun run
-           ?revs
-           ?change
-           ?text
-           ?git
-           ?reverse
-           ?ignore_all_space
-           ?ignore_space_change
-           ?ignore_blank_lines
-           ?unified
-           ?stat
-           ?includes
-           ?excludes
-           ?subrepos
-           ?files
-           () ->
+        ?revs
+        ?change
+        ?text
+        ?git
+        ?reverse
+        ?ignore_all_space
+        ?ignore_space_change
+        ?ignore_blank_lines
+        ?unified
+        ?stat
+        ?includes
+        ?excludes
+        ?subrepos
+        ?files
+        () ->
         match files with
         | Some [] -> return ""
         | _ ->
@@ -430,9 +433,9 @@ module Make (A : Arg) = struct
 
   let id =
     command
-      "log" (* yes, you read that right *)
-      (fun run ?(rev = ".") () -> run [ [ "--rev"; rev ]; [ "--template"; "{node}" ] ])
-      ~handle_output:expect_0_stdout
+      "log"
+      (fun run ?(rev = ".") () -> run [ [ "--rev"; rev ]; [ "--template"; "{node}\\n" ] ])
+      ~handle_output:(Fn.compose (Or_error.map ~f:String.rstrip) expect_0_stdout)
   ;;
 
   let init =
@@ -480,39 +483,39 @@ module Make (A : Arg) = struct
           ?files
           ?include_files_in_changeset_info
           ()
-          ->
-      let template =
-        { Changeset_info.Template.include_files =
-            Option.is_some include_files_in_changeset_info
-        }
-      in
-      let handle_output (output : Process.Output.t) =
-        (match output.exit_status with
-         | Error _ -> non_0_exit_error output
-         | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
-        |> Or_simple_error.create
-      in
-      match files with
-      | Some [] -> return []
-      | _ ->
-        run
-          ~handle_output
-          [ no_arg "--follow" follow
-          ; date_range_args date
-          ; no_arg "--copies" copies
-          ; keywords_args keywords
-          ; revs_args revs
-          ; no_arg "--removed" removed
-          ; repeated "--user" users
-          ; branches_args branches
-          ; repeated "--prune" prune_revs
-          ; limit_args limit
-          ; no_arg "--no-merges" no_merges
-          ; includes_args includes
-          ; excludes_args excludes
-          ; template_args (`For_changeset_info template)
-          ; Option.value files ~default:[]
-          ])
+        ->
+         let template =
+           { Changeset_info.Template.include_files =
+               Option.is_some include_files_in_changeset_info
+           }
+         in
+         let handle_output (output : Process.Output.t) =
+           (match output.exit_status with
+            | Error _ -> non_0_exit_error output
+            | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
+           |> Or_simple_error.create
+         in
+         match files with
+         | Some [] -> return []
+         | _ ->
+           run
+             ~handle_output
+             [ no_arg "--follow" follow
+             ; date_range_args date
+             ; no_arg "--copies" copies
+             ; keywords_args keywords
+             ; revs_args revs
+             ; no_arg "--removed" removed
+             ; repeated "--user" users
+             ; branches_args branches
+             ; repeated "--prune" prune_revs
+             ; limit_args limit
+             ; no_arg "--no-merges" no_merges
+             ; includes_args includes
+             ; excludes_args excludes
+             ; template_args (`For_changeset_info template)
+             ; Option.value files ~default:[]
+             ])
   ;;
 
   let manifest =
@@ -564,49 +567,49 @@ module Make (A : Arg) = struct
           ?remote_path
           ?include_files_in_changeset_info
           ()
-          ->
-      let template =
-        { Changeset_info.Template.include_files =
-            Option.is_some include_files_in_changeset_info
-        }
-      in
-      let handle_output (output : Process.Output.t) =
-        (match output.exit_status with
-         | Error (`Exit_non_zero 1) -> Ok []
-         | Error _ -> unexpected_exit_error output
-         | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
-        |> Or_simple_error.create
-      in
-      run
-        ~handle_output
-        [ no_arg "--force" force
-        ; revs_args revs
-        ; limit_args limit
-        ; no_arg "--no-merges" no_merges
-        ; ssh_args ssh
-        ; remotecmd_args remotecmd
-        ; insecure_args insecure
-        ; [ "--quiet" ]
-        ; template_args (`For_changeset_info template)
-        ; Option.to_list remote_path
-        ])
+        ->
+         let template =
+           { Changeset_info.Template.include_files =
+               Option.is_some include_files_in_changeset_info
+           }
+         in
+         let handle_output (output : Process.Output.t) =
+           (match output.exit_status with
+            | Error (`Exit_non_zero 1) -> Ok []
+            | Error _ -> unexpected_exit_error output
+            | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
+           |> Or_simple_error.create
+         in
+         run
+           ~handle_output
+           [ no_arg "--force" force
+           ; revs_args revs
+           ; limit_args limit
+           ; no_arg "--no-merges" no_merges
+           ; ssh_args ssh
+           ; remotecmd_args remotecmd
+           ; insecure_args insecure
+           ; [ "--quiet" ]
+           ; template_args (`For_changeset_info template)
+           ; Option.to_list remote_path
+           ])
   ;;
 
   let pull =
     command
       "pull"
       (fun run
-           ?update
-           ?force
-           ?revs
-           ?bookmarks
-           ?branches
-           ?ssh
-           ?remotecmd
-           ?insecure
-           ?rebase
-           ?remote_path
-           () ->
+        ?update
+        ?force
+        ?revs
+        ?bookmarks
+        ?branches
+        ?ssh
+        ?remotecmd
+        ?insecure
+        ?rebase
+        ?remote_path
+        () ->
         run
           [ no_arg "--update" update
           ; force_args force
@@ -642,16 +645,16 @@ module Make (A : Arg) = struct
     command
       "push"
       (fun run
-           ?force
-           ?revs
-           ?bookmarks
-           ?branches
-           ?new_branch
-           ?ssh
-           ?remotecmd
-           ?insecure
-           ?remote_path
-           () ->
+        ?force
+        ?revs
+        ?bookmarks
+        ?branches
+        ?new_branch
+        ?ssh
+        ?remotecmd
+        ?insecure
+        ?remote_path
+        () ->
         run
           [ force_args force
           ; revs_args revs
