@@ -28,15 +28,14 @@ module type Arg = sig
 
       Giving [run] this type, rather than a type that just returns a [Process.Output.t],
       makes it more flexible and allows it to supply more complete information in error
-      cases.  For example, if [run] adds additional arguments (as happens in the top-level
+      cases. For example, if [run] adds additional arguments (as happens in the top-level
       instantiation of this functor), [run] can add them to the error provided by
       [handle_output].
 
       It's not even necessary for [run] to call [handle_output], if the type ['a Output.t]
-      doesn't reference ['a].  An example of this is running hg in the foreground with
+      doesn't reference ['a]. An example of this is running hg in the foreground with
       [Unix.fork_exec] and [Unix.waitpid], and using [unit Deferred.t] for the output
-      type.
-  *)
+      type. *)
   val run
     : (args:string list
        -> handle_output:(Process.Output.t -> 'a Or_simple_error.t)
@@ -89,8 +88,7 @@ module type Hg_lib_factory = sig
       - hardwire a particular version of hg as stated by [hg_binary]
       - set [HGUSER] to [hg_user]
       - set [HGRCPATH] to [hgrc_path]. hg will now only load this file and the [.hg/hgrc]
-        for the repo.
-  *)
+        for the repo. *)
   module Fixed_hg_environment (_ : Hg_env) :
     Arg
     with type 'a With_args.t = 'a with_global_args
@@ -107,18 +105,19 @@ module type Hg_lib_factory = sig
 
       {[
         module Make_s (A : Hg_lib_factory.Arg) = struct
-          module type S = S
+          module type S =
+            S
             with type 'a with_args := 'a A.With_args.t
-            with type 'a output    := 'a A.Output.t
+            with type 'a output := 'a A.Output.t
         end
+
         module type Hg = Hg_lib_factory.Make_lib(Make_s).S
       ]}
 
       This is necessary because a module type passed to a functor must either be fully
       abstract or fully concrete -- you can't say the functor input has a module type [S]
       which has types ['a with_args] and ['a output] unless you fully specify [S]. We want
-      [S] to be different for different callers, so we have to do this workaround.
-  *)
+      [S] to be different for different callers, so we have to do this workaround. *)
   module Make_lib (M : Make_s) : sig
     module type S = sig
       module Make (A : Arg) : M(A).S

@@ -492,7 +492,7 @@ module Destination = struct
   ;;
 end
 
-(** This is just a wrapper around [Or_error.t].  It exists because it is for very simple
+(** This is just a wrapper around [Or_error.t]. It exists because it is for very simple
     errors (e.g. "unexpected exit status") which you should tag to produce better errors
     containing, e.g., the final list of arguments passed to hg. *)
 module Or_simple_error = struct
