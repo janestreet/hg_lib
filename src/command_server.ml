@@ -228,6 +228,7 @@ let create ?env ?(hg_binary = "hg") ?config ~accepted_encodings ssh =
       in
       "ssh", options @ [ user_string ^ host; "--"; hg_binary ]
   in
+  let env = Hg_private.Command_helpers.prepend_to_env [ "HGPLAIN", "1" ] env in
   let args = extra_args @ [ "serve"; "--cmdserver"; "pipe" ] @ config in
   (match ssh with
    | None ->
@@ -236,7 +237,7 @@ let create ?env ?(hg_binary = "hg") ?config ~accepted_encodings ssh =
      Monitor.try_with_or_error ~here:[%here] Sys.home_directory >>|? Option.return
    | Some _ -> return (Ok None))
   >>=? fun working_dir ->
-  Process.create ?env ?working_dir ~prog ~args ()
+  Process.create ~env ?working_dir ~prog ~args ()
   >>=? fun process ->
   let hello_result =
     Channel_IO.read (Process.stdout process)

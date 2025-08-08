@@ -782,20 +782,27 @@ module Make (A : Arg) = struct
         match o.exit_status with
         | Error _ -> non_0_exit_error o
         | Ok () ->
-          let entry_map (acc : File_status.t list) str =
-            match String.split str ~on:' ' with
-            | [ "" ] -> acc
-            | [ "M"; filename ] -> Modified filename :: acc
-            | [ "A"; filename ] -> Added filename :: acc
-            | [ "R"; filename ] -> Removed filename :: acc
-            | [ "!"; filename ] -> Missing filename :: acc
-            | [ "?"; filename ] -> Not_tracked filename :: acc
-            | [ ""; ""; src ] ->
-              (match acc with
-               | Added dst :: acc -> Copied { src; dst = `New_file dst } :: acc
-               | Modified dst :: acc -> Copied { src; dst = `Overwritten dst } :: acc
-               | _ -> failwithf "unexpected hg output: '%s'" str ())
-            | _ -> failwithf "unexpected hg output: '%s'" str ()
+          let entry_map (acc : File_status.t list) = function
+            | "" -> acc
+            | str ->
+              (match String.chop_prefix ~prefix:"  " str with
+               | None ->
+                 (match String.lsplit2 str ~on:' ' with
+                  | Some ("M", filename) -> Modified filename :: acc
+                  | Some ("A", filename) -> Added filename :: acc
+                  | Some ("R", filename) -> Removed filename :: acc
+                  | Some ("!", filename) -> Missing filename :: acc
+                  | Some ("?", filename) -> Not_tracked filename :: acc
+                  | _ -> failwithf "unexpected hg output: '%s'" str ())
+               | Some src ->
+                 (match acc with
+                  | Added dst :: acc -> Copied { src; dst = `New_file dst } :: acc
+                  | Modified dst :: acc -> Copied { src; dst = `Overwritten dst } :: acc
+                  (* A missing file can have a copy source if you start with the
+                  above [`Overwritten] case and then run [rm dst]. It's unlikely
+                  anyone will want to handle this specially, so let's ignore it. *)
+                  | Missing _ :: _ -> acc
+                  | _ -> failwithf "unexpected hg output: '%s'" str ()))
           in
           o.stdout
           |> String.split ~on:'\n'

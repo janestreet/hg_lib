@@ -583,6 +583,16 @@ module Command_helpers = struct
   let expect_0_stdout_list (o : Async.Process.Output.t) =
     Or_error.map (expect_0_stdout o) ~f:String.split_lines
   ;;
+
+  let prepend_to_env tuples = function
+    | None -> `Extend tuples
+    | Some (`Extend envs) -> `Extend (tuples @ envs)
+    | Some (`Override l) -> `Override (List.map tuples ~f:(fun (x, y) -> x, Some y) @ l)
+    | Some (`Replace envs) -> `Replace (tuples @ envs)
+    | Some (`Replace_raw envs) ->
+      let env_strings = List.map tuples ~f:(fun (key, value) -> key ^ "=" ^ value) in
+      `Replace_raw (env_strings @ envs)
+  ;;
 end
 
 module Public = struct
