@@ -77,15 +77,30 @@ module Simple = struct
     let return = Fn.id
   end
 
+  let in_thread f =
+    let res = Thread_safe_ivar.create () in
+    let thread : Core_thread.t =
+      Core_thread.create
+        (fun () -> Thread_safe_ivar.fill res (Result.try_with f))
+        ()
+        ~on_uncaught_exn:`Print_to_stderr
+    in
+    fun () ->
+      Core_thread.join thread;
+      Thread_safe_ivar.read res |> Result.ok_exn
+  ;;
+
   let run ?repository ?cwd ?config ?env ~args ~handle_output () =
     let args = With_global_args.prepend_to_args ~repository ~cwd ~config args in
+    let env = Hg_private.Command_helpers.prepend_to_env [ "HGPLAIN", "1" ] env in
     let { Unix.Process_info.stdin; stdout; stderr; pid } =
-      match env with
-      | None -> Unix.create_process ~prog:"hg" ~args
-      | Some env -> Unix.create_process_env ~prog:"hg" ~args ~env ()
+      Unix.create_process_env ~prog:"hg" ~args ~env ()
+    in
+    let wait_for_stderr =
+      in_thread (fun () -> In_channel.input_all (Unix.in_channel_of_descr stderr))
     in
     let stdout_s = In_channel.input_all (Unix.in_channel_of_descr stdout) in
-    let stderr_s = In_channel.input_all (Unix.in_channel_of_descr stderr) in
+    let stderr_s = wait_for_stderr () in
     let exit_status = Unix.waitpid pid in
     Unix.close stdin;
     Unix.close stdout;
@@ -110,7 +125,8 @@ module Async = struct
 
   let run ?repository ?cwd ?config ?env ~args ~handle_output () =
     let args = With_global_args.prepend_to_args ~repository ~cwd ~config args in
-    Process.create ?env ~prog:"hg" ~args ()
+    let env = Hg_private.Command_helpers.prepend_to_env [ "HGPLAIN", "1" ] env in
+    Process.create ~env ~prog:"hg" ~args ()
     >>=? fun process ->
     Process.collect_output_and_wait process
     >>| fun output -> handle_output_with_args ~args handle_output output
@@ -132,15 +148,9 @@ module Fixed_hg_environment (E : Hg_env) = struct
       With_global_args.prepend_to_args ~repository ~cwd ~config:(Some config) args
     in
     let env =
-      let tuples = [ "HGRCPATH", E.hgrc_path; "HGUSER", Lazy.force E.hg_user ] in
-      match env with
-      | None -> `Extend tuples
-      | Some (`Extend envs) -> `Extend (tuples @ envs)
-      | Some (`Override l) -> `Override (List.map tuples ~f:(fun (x, y) -> x, Some y) @ l)
-      | Some (`Replace envs) -> `Replace (tuples @ envs)
-      | Some (`Replace_raw envs) ->
-        let env_strings = List.map tuples ~f:(fun (key, value) -> key ^ "=" ^ value) in
-        `Replace_raw (env_strings @ envs)
+      Hg_private.Command_helpers.prepend_to_env
+        [ "HGPLAIN", "1"; "HGRCPATH", E.hgrc_path; "HGUSER", Lazy.force E.hg_user ]
+        env
     in
     if false
     then

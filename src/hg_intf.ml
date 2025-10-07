@@ -120,8 +120,8 @@ module type S = sig
        -> message:string
        -> ?time:Time.t (** Defaults to the current time. *)
        -> ?zone:Time.Zone.t
-            (** Mercurial commit times require an explicit UTC offset. Defaults to the local
-           time zone. *)
+            (** Mercurial commit times require an explicit UTC offset. Defaults to the
+                local time zone. *)
        -> ?user:string
        -> ?files:string list
        -> unit

@@ -492,7 +492,7 @@ module Destination = struct
   ;;
 end
 
-(** This is just a wrapper around [Or_error.t].  It exists because it is for very simple
+(** This is just a wrapper around [Or_error.t]. It exists because it is for very simple
     errors (e.g. "unexpected exit status") which you should tag to produce better errors
     containing, e.g., the final list of arguments passed to hg. *)
 module Or_simple_error = struct
@@ -582,6 +582,16 @@ module Command_helpers = struct
 
   let expect_0_stdout_list (o : Async.Process.Output.t) =
     Or_error.map (expect_0_stdout o) ~f:String.split_lines
+  ;;
+
+  let prepend_to_env tuples = function
+    | None -> `Extend tuples
+    | Some (`Extend envs) -> `Extend (tuples @ envs)
+    | Some (`Override l) -> `Override (List.map tuples ~f:(fun (x, y) -> x, Some y) @ l)
+    | Some (`Replace envs) -> `Replace (tuples @ envs)
+    | Some (`Replace_raw envs) ->
+      let env_strings = List.map tuples ~f:(fun (key, value) -> key ^ "=" ^ value) in
+      `Replace_raw (env_strings @ envs)
   ;;
 end
 
