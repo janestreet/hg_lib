@@ -84,15 +84,11 @@ end = struct
     let command = String.concat args ~sep:"\000" in
     let buf = Bytes.create 4 in
     Binary_packing.pack_unsigned_32_int_big_endian ~buf ~pos:0 (String.length command);
-    try_with
-      ~run:`Schedule (* consider [~run:`Now] instead; see: https://wiki/x/ByVWF *)
-      ~rest:`Log
-      (* consider [`Raise] instead; see: https://wiki/x/Ux4xF *)
-      (fun () ->
-         Writer.write child_stdin "runcommand\n";
-         Writer.write_bytes child_stdin buf;
-         Writer.write child_stdin command;
-         Writer.flushed child_stdin)
+    try_with ~run:`Schedule ~rest:`Log (fun () ->
+      Writer.write child_stdin "runcommand\n";
+      Writer.write_bytes child_stdin buf;
+      Writer.write child_stdin command;
+      Writer.flushed child_stdin)
     >>| function
     | Ok _ as ok -> ok
     | Error exn ->

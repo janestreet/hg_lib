@@ -72,9 +72,8 @@ module Changeset_info = struct
   end
 
   let time_of_hgtime hgdate =
-    (* The format is '<unix timestamp of commit> <timezone offset of commit in
-       seconds>'. We only need the second part if we want to know the where the commit
-       happened. *)
+    (* The format is '<unix timestamp of commit> <timezone offset of commit in seconds>'.
+       We only need the second part if we want to know the where the commit happened. *)
     match String.split hgdate ~on:' ' with
     | [ unix_timestamp; _zone_offset_in_seconds ] ->
       Time.of_span_since_epoch (Time.Span.of_sec (Float.of_string unix_timestamp))
@@ -95,9 +94,9 @@ module Changeset_info = struct
 
   let of_templated_stdout stdout { Template.include_files } =
     (* Every log entry has a newline appended to it. So [String.split ~on:'\n'] will
-       necessarily give us an extra empty chunk. This is true even for empty input.
-       Using [String.split_lines] would maybe be nicer, but it also splits on \r\n so it
-       loses information. *)
+       necessarily give us an extra empty chunk. This is true even for empty input. Using
+       [String.split_lines] would maybe be nicer, but it also splits on \r\n so it loses
+       information. *)
     let lines =
       String.split ~on:'\n' stdout
       |> List.rev
@@ -112,8 +111,7 @@ module Changeset_info = struct
       | node :: p1 :: p2 :: author :: time :: tags :: files :: first_desc :: tl ->
         let end_desc, remainder =
           List.split_while tl ~f:(fun line ->
-            (* tabindent does *not* change blank lines to "\t", which is a little
-               annoying *)
+            (* tabindent does *not* change blank lines to "\t", which is a little annoying *)
             String.is_empty line || Char.equal line.[0] '\t')
         in
         let description =
@@ -392,9 +390,7 @@ module Time_with_utc_offset = struct
   ;;
 
   let%expect_test "to_string" =
-    (*
-       $ TZ=Etc/Utc date --date '2001-02-03 04:05:06' +%s
-       981173106
+    (* $ TZ=Etc/Utc date --date '2001-02-03 04:05:06' +%s 981173106
     *)
     let time = Time.of_string_with_utc_offset "2001-02-03 04:05:06Z" in
     of_time_with_zone ~zone:Time.Zone.utc time |> to_string |> print_endline;
