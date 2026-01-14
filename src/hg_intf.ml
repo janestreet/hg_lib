@@ -59,12 +59,12 @@ module type S = sig
     : (?force:unit
        -> name:
             string
-            (* These variants correspond to flags with similar names. [`Current] means none of
-          those flags.
+            (* These variants correspond to flags with similar names. [`Current] means
+               none of those flags.
 
-          Most combinations of these flags are invalid or useless (e.g. hg disallows passing
-          --rev and --delete together, and --rev does the same thing whether or not you pass
-          --inactive), so this disallows combinations.
+               Most combinations of these flags are invalid or useless (e.g. hg disallows
+               passing --rev and --delete together, and --rev does the same thing whether
+               or not you pass --inactive), so this disallows combinations.
             *)
        -> [ `Set_rev of string | `Current | `Inactive | `Delete | `Rename of string ]
        -> unit output)
@@ -102,7 +102,7 @@ module type S = sig
 
   val cat
     (* [destination] cannot go inside the [with_args] parameter due to an issue with the
-       value restriction.  This should have little effect on users. *)
+       value restriction. This should have little effect on users. *)
     :  destination:'dst Destination.t
     -> (?includes:string list
         -> ?excludes:string list
@@ -192,7 +192,7 @@ module type S = sig
        -> Changeset_info.t list output)
         with_args
 
-  (* Despite the name, this actually calls `hg log --rev $rev --template {node}` to get
+  (* Despite the name, this actually calls `hg log --rev $rev --template [{node}]` to get
      the 40-character revision hash. The expectation is that this is what most
      programmatic calls to `hg id` actually want from it. *)
   val id : (?rev:string -> unit -> string output) with_args

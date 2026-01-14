@@ -89,7 +89,7 @@ module Make (A : Arg) = struct
           ; no_arg "--number" number
           ; no_arg "--changeset" changeset
             (* As of 2021-01, --skip is an experimental flag and only shows up in the
-             verbose help output. *)
+               verbose help output. *)
           ; repeated "--skip" skip
           ; no_arg "--ignore-space-change" ignore_space_change
           ; no_arg "--ignore-blank-lines" ignore_blank_lines
@@ -414,10 +414,10 @@ module Make (A : Arg) = struct
       let handle_output (output : Process.Output.t) =
         (match output.exit_status with
          | Error _ ->
-           (* 1 is documented as "no matching heads found," but I think this only comes
-              up if you're closing branch heads, which we don't really do. Rather than
-              making everyone explicitly deal with an error case that's very unlikely
-              to come up, we'll just report it as a generic error. *)
+           (* 1 is documented as "no matching heads found," but I think this only comes up
+              if you're closing branch heads, which we don't really do. Rather than making
+              everyone explicitly deal with an error case that's very unlikely to come up,
+              we'll just report it as a generic error. *)
            non_0_exit_error output
          | Ok () -> Changeset_info.of_templated_stdout output.stdout template)
         |> Or_simple_error.create
@@ -710,7 +710,7 @@ module Make (A : Arg) = struct
         | _ ->
           let files =
             (* This command also accepts a [--all] flag, but it's not necessary with
-                [--mark]. *)
+               [--mark]. *)
             match files with
             | `All_files -> []
             | `These_files x -> x
@@ -733,8 +733,8 @@ module Make (A : Arg) = struct
         | `These_files [] -> return ()
         | _ ->
           (* For safety, [hg revert] with no file arguments and without [--all] does not
-              revert your entire repo. We instead use a variant type, so we should add
-              [--all] automatically. *)
+             revert your entire repo. We instead use a variant type, so we should add
+             [--all] automatically. *)
           let files, all =
             match files with
             | `All_files -> [], Some ()
@@ -798,9 +798,9 @@ module Make (A : Arg) = struct
                  (match acc with
                   | Added dst :: acc -> Copied { src; dst = `New_file dst } :: acc
                   | Modified dst :: acc -> Copied { src; dst = `Overwritten dst } :: acc
-                  (* A missing file can have a copy source if you start with the
-                  above [`Overwritten] case and then run [rm dst]. It's unlikely
-                  anyone will want to handle this specially, so let's ignore it. *)
+                  (* A missing file can have a copy source if you start with the above
+                     [`Overwritten] case and then run [rm dst]. It's unlikely anyone will
+                     want to handle this specially, so let's ignore it. *)
                   | Missing _ :: _ -> acc
                   | _ -> failwithf "unexpected hg output: '%s'" str ()))
           in
