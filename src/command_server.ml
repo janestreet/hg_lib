@@ -32,7 +32,7 @@ end = struct
         | 'e' -> Ok `Error
         | 'r' -> Ok `Result
         (* these are part of the spec, but unsupported by this implementation *)
-        (* | 'I' | 'L' | 'd' *)
+        (*=| 'I' | 'L' | 'd' *)
         | _ -> Or_error.error "unsupported channel" channel_char Char.sexp_of_t
       in
       (match channel with

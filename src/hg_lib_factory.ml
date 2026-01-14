@@ -154,7 +154,7 @@ module Fixed_hg_environment (E : Hg_env) = struct
     in
     if false
     then
-      [%log.global.debug_format
+      [%log.debug_format
         !"[%{sexp:Process.env}] %s %{sexp:string list}" env E.hg_binary args];
     Process.create ~env ~prog:E.hg_binary ~args ()
     >>=? fun process ->
