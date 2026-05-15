@@ -21,7 +21,7 @@ depends: [
   "ppx_jane"
   "dune"                     {>= "3.17.0"}
 ]
-available: arch != "arm32" & arch != "x86_32"
+available: arch != "x86_32"
 synopsis: "A library that wraps the Mercurial command line interface"
 description: "
 A library that wraps the Mercurial command line interface.
